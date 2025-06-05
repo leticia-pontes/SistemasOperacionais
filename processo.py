@@ -1,0 +1,55 @@
+import multiprocessing
+import time
+
+def tarefa():
+    inicio = time.time()
+    print("Processo finalizado")
+    fim = time.time()
+    print(f"Tempo do processo: {fim - inicio:.4f}")
+
+if __name__ == "__main__":
+    print(multiprocessing.cpu_count())
+    
+    p1 = multiprocessing.Process(target=tarefa)
+    p2 = multiprocessing.Process(target=tarefa)
+    p3 = multiprocessing.Process(target=tarefa)
+    p4 = multiprocessing.Process(target=tarefa)
+    p5 = multiprocessing.Process(target=tarefa)
+    p6 = multiprocessing.Process(target=tarefa)
+    p7 = multiprocessing.Process(target=tarefa)
+    p8 = multiprocessing.Process(target=tarefa)
+    p9 = multiprocessing.Process(target=tarefa)
+    p10 = multiprocessing.Process(target=tarefa)
+    p11 = multiprocessing.Process(target=tarefa)
+    p12 = multiprocessing.Process(target=tarefa)
+    p13 = multiprocessing.Process(target=tarefa)
+
+    p1.start()
+    p2.start()
+    p3.start()
+    p4.start()
+    p5.start()
+    p6.start()
+    p7.start()
+    p8.start()
+    p9.start()
+    p10.start()
+    p11.start()
+    p12.start()
+    p13.start()
+    
+    p1.join()
+    p2.join()
+    p3.join()
+    p4.join()
+    p5.join()
+    p6.join()
+    p7.join()
+    p8.join()
+    p9.join()
+    p10.join()
+    p11.join()
+    p12.join()
+    p13.join()
+    
+    print("Processos finalizados")

@@ -1,0 +1,652 @@
+Resumo de Sistemas Operacionais – Concorrência e Gerência de Memória
+
+1. MUTEX (Exclusão Mútua)
+- Objetivo: Garantir que apenas uma thread acesse uma seção crítica por vez.
+- Variáveis compartilhadas podem causar condição de corrida (race condition), onde o resultado depende da ordem de execução.
+- Mutex é uma trava binária usada para proteger seções críticas.
+- Exemplo em Python:
+
+import threading
+
+mutex = threading.Lock()
+saldo = 100
+
+def sacar(valor):
+    global saldo
+    with mutex:
+        if saldo >= valor:
+            saldo -= valor
+
+- O uso de "with mutex" em Python é equivalente a adquirir e liberar o lock de forma segura.
+
+2. CONDIÇÃO DE CORRIDA (Lock vs NoLock)
+- NoLock: Várias threads acessam recursos compartilhados sem controle, levando a erros imprevisíveis.
+- Lock: Threads usam mutex para garantir acesso exclusivo, evitando inconsistência.
+- Condições de corrida são erros difíceis de reproduzir e depurar.
+
+# LOCK
+import threading
+import time
+
+contador = 0
+lock = threading.Lock()
+
+def incrementar(nome_thread):
+    global contador
+    for _ in range(100000):
+        time.sleep(0.00001)
+        with lock:
+            contador += 1
+    print(f"Thread {nome_thread} terminou.")
+
+def main():
+    global contador
+    contador = 0
+
+    thread1 = threading.Thread(target=incrementar, args=("A",))
+    thread2 = threading.Thread(target=incrementar, args=("B",))
+
+    print("Executando versão COM LOCK...")
+    inicio = time.time()
+
+    thread1.start()
+    thread2.start()
+
+    thread1.join()
+    thread2.join()
+
+    fim = time.time()
+    print(f"\n[COM LOCK] Valor final do contador: {contador}")
+    print(f"Tempo total: {fim - inicio:.4f} segundos\n")
+
+if __name__ == "__main__":
+    main()
+
+Com Lock
+*  Valor final do contador	: Sempre correto (200000)
+*  Segurança da concorrência	: ✅ Protegido por exclusão mútua
+*  Facilidade de depuração	: Fácil de validar
+*  Velocidade : Mais lenta, porém segura
+
+# NO LOCK
+import threading
+import time
+
+contador = 0
+
+def incrementar(nome_thread):
+    global contador
+    for _ in range(100000):
+        atual = contador
+        time.sleep(0.00001)  # Atraso proposital para simular disputa
+        contador = atual + 1
+    print(f"Thread {nome_thread} terminou.")
+
+def main():
+    global contador
+    contador = 0
+
+    thread1 = threading.Thread(target=incrementar, args=("A",))
+    thread2 = threading.Thread(target=incrementar, args=("B",))
+
+    print("Executando versão SEM LOCK...")
+    inicio = time.time()
+
+    thread1.start()
+    thread2.start()
+
+    thread1.join()
+    thread2.join()
+
+    fim = time.time()
+    print(f"\n[SEM LOCK] Valor final do contador: {contador}")
+    print(f"Tempo total: {fim - inicio:.4f} segundos\n")
+
+if __name__ == "__main__":
+    main()
+
+Sem Lock
+
+*  Valor final do contador	: Variável (frequentemente errado)
+*  Segurança da concorrência	: ❌ Vulnerável a race conditions
+*  Facilidade de depuração	: Difícil (bugs intermitentes)
+*  Velocidade : Pode ser ligeiramente mais rápida, mas com erros
+
+
+3. SEMÁFORO
+- Um semáforo é uma variável especial usada para controlar o acesso a múltiplos recursos.
+- Pode ser binário (0 ou 1) ou contável (>1).
+- Operações básicas:
+  - acquire() → decrementa o contador ou bloqueia se for 0
+  - release() → incrementa o contador e desbloqueia uma thread
+
+🔵 Semáforo (à esquerda):
+Permite até 3 threads ao mesmo tempo usando o recurso.
+
+As marcações (bolinhas) mostram várias threads diferentes acessando em paralelo.
+
+Esse comportamento é ideal quando temos vários recursos disponíveis, como:
+
+Vagas de conexão a banco de dados.
+
+Impressoras disponíveis.
+
+Máquinas em uma fila de produção.
+
+🔴 Lock (à direita):
+Apenas uma thread por vez consegue acessar o recurso.
+
+O acesso é completamente sequencial.
+
+Bom para proteção total, mas ineficiente se você tiver múltiplos recursos e usar lock como se fosse um único gargalo.
+
+📚 Conclusão Didática:
+
+Apenas um recurso deve ser usado por vez:	Lock
+Vários recursos iguais (ex: 3 impressoras):	Semaphore(n)
+Controle total e simples:	Lock
+Controle mais flexível:	Semaphore
+
+- Exemplo em Python:
+
+import threading
+
+sem = threading.Semaphore(3)  # permite até 3 threads simultâneas
+
+def tarefa():
+    with sem:
+        # seção crítica
+
+- Semáforos são úteis quando há múltiplos recursos (ex: conexões, impressoras, etc.)
+
+import threading
+import time
+import matplotlib.pyplot as plt
+
+# Número máximo de threads que podem acessar simultaneamente
+MAX_RECURSOS = 3
+
+# Semáforo permitindo até MAX_RECURSOS threads
+semaforo = threading.Semaphore(MAX_RECURSOS)
+
+# Lock tradicional (exclusão total)
+lock = threading.Lock()
+
+# Registros para visualização
+acessos_com_semaforo = []
+acessos_com_lock = []
+
+# Função simulando acesso a um recurso limitado
+def acessar_recurso_com_semaforo(thread_id):
+    for _ in range(3):
+        #semaforo.acquire()
+        with semaforo:
+          acessos_com_semaforo.append((thread_id, time.time()))
+          time.sleep(0.5)  # Simula tempo de uso do recurso
+        #semaforo.release()
+
+# Função simulando acesso ao mesmo recurso com lock (exclusivo)
+def acessar_recurso_com_lock(thread_id):
+    for _ in range(3):
+        #lock.acquire()
+        with lock:
+          acessos_com_lock.append((thread_id, time.time()))
+          time.sleep(0.5)
+        #lock.release()
+
+# Criar e executar threads para ambos os casos
+def simular_acessos():
+    threads_semaforo = [threading.Thread(target=acessar_recurso_com_semaforo, args=(i,)) for i in range(6)]
+    threads_lock = [threading.Thread(target=acessar_recurso_com_lock, args=(i,)) for i in range(6)]
+
+    # Iniciar com semáforo
+    for t in threads_semaforo:
+        t.start()
+    for t in threads_semaforo:
+        t.join()
+
+    # Iniciar com lock
+    for t in threads_lock:
+        t.start()
+    for t in threads_lock:
+        t.join()
+
+# Executar simulação
+simular_acessos()
+
+# Preparar dados para o gráfico
+tempos_s, ids_s = zip(*acessos_com_semaforo)
+tempos_l, ids_l = zip(*acessos_com_lock)
+
+# Plotar
+plt.figure(figsize=(14, 6))
+
+# Semáforo
+plt.subplot(1, 2, 1)
+plt.scatter(tempos_s, ids_s, c='blue')
+plt.title("Acessos com Semáforo (3 simultâneos)")
+plt.xlabel("Tempo")
+plt.ylabel("ID da Thread")
+plt.grid(True)
+
+# Lock
+plt.subplot(1, 2, 2)
+plt.scatter(tempos_l, ids_l, c='red')
+plt.title("Acessos com Lock (1 por vez)")
+plt.xlabel("Tempo")
+plt.ylabel("ID da Thread")
+plt.grid(True)
+
+plt.tight_layout()
+plt.show()
+
+
+4. JANTAR DOS FILÓSOFOS
+- Problema clássico de concorrência: 5 filósofos precisam de 2 garfos (esquerda e direita) para comer.
+- Deadlock ocorre se todos pegarem um garfo e esperarem o segundo.
+
+from enum import Enum
+import threading
+import time
+import random
+
+NUM_FILOSOFOS = 5
+TEMPO_PARA_COMER = 1
+NUM_CICLOS = 5 # Número de vezes que o ciclo "Pensar, Com Fome, Comer" é realizado
+
+semaforo = threading.Semaphore(NUM_FILOSOFOS - 1)
+
+garfos = [threading.Lock() for _ in range(NUM_FILOSOFOS)]
+
+class FilosofoState(Enum):
+    PENSANDO = "pensando"
+    COM_FOME = "com fome"
+    COMENDO = "comendo"
+
+class Filosofo(threading.Thread):
+    def __init__(self, tid):
+        super().__init__()
+        self.tid = tid
+        self.state = FilosofoState.PENSANDO
+
+    def run(self):
+        self.ciclo()
+
+    def pensar(self):
+        self.state = FilosofoState.PENSANDO
+        print(f"Filósofo {self.tid} está pensando.")
+        time.sleep(random.uniform(0.5, 1.5))
+
+    def pegar_garfos(self):
+        self.state = FilosofoState.COM_FOME
+        print(f"Filósofo {self.tid} está com fome.")
+        semaforo.acquire()
+
+        garfo_esquerdo = garfos[self.tid]
+        garfo_direito = garfos[(self.tid + 1) % NUM_FILOSOFOS]
+
+        primeiro, segundo = (garfo_esquerdo, garfo_direito) if self.tid % 2 == 0 else (garfo_direito, garfo_esquerdo)
+
+        primeiro.acquire()
+        segundo.acquire()
+
+    def soltar_garfos(self):
+        garfos[self.tid].release()
+        garfos[(self.tid + 1) % NUM_FILOSOFOS].release()
+        semaforo.release()
+
+    def comer(self):
+        self.state = FilosofoState.COMENDO
+        print(f"Filósofo {self.tid} está comendo.")
+        time.sleep(TEMPO_PARA_COMER)
+
+    def ciclo(self):
+        for _ in range(NUM_CICLOS):
+            self.pensar()
+            self.pegar_garfos()
+            self.comer()
+            self.soltar_garfos()
+
+def main():
+    filosofos = [Filosofo(i) for i in range(NUM_FILOSOFOS)]
+
+    for f in filosofos:
+        f.start()
+
+    for f in filosofos:
+        f.join()
+
+    print("Todos os filósofos terminaram seus ciclos.")
+
+if __name__ == "__main__":
+    main()
+
+a) Com Locks:
+- Cada filósofo tenta pegar os dois locks (garfos).
+- Se todos fizerem isso ao mesmo tempo, o sistema entra em deadlock.
+
+import threading  # Biblioteca de threads
+import time       # Para pausas temporais
+import random     # Para gerar tempos aleatórios
+
+N = 5  # Número de filósofos (e garfos)
+
+# Cria uma lista de locks (um por garfo)
+garfos = [threading.Lock() for _ in range(N)]
+
+# Função com o comportamento de cada filósofo
+def filosofo(i):
+    esquerda = garfos[i]               # Garfo à esquerda do filósofo i
+    direita = garfos[(i + 1) % N]      # Garfo à direita (com wrap-around)
+
+    while True:
+        print(f"Filósofo {i} está pensando...")  # Estado: pensando
+        time.sleep(random.uniform(0.5, 1.5))     # Espera um tempo aleatório
+        print(f"Filósofo {i} está com fome.")    # Estado: com fome
+
+        # Define a ordem de pegar os garfos para evitar deadlock
+        # Filósofos pares pegam esquerda depois direita; ímpares fazem o oposto
+        primeiro, segundo = (esquerda, direita) if i % 2 == 0 else (direita, esquerda)
+
+        # Tenta pegar os dois garfos com `with`, que faz o acquire/release automático
+        with primeiro:
+            with segundo:
+                print(f"Filósofo {i} está comendo.")  # Estado: comendo
+                time.sleep(random.uniform(0.5, 1.5))  # Come por um tempo aleatório
+                print(f"Filósofo {i} terminou de comer.")  # Termina de comer
+
+# Cria e inicia as threads dos filósofos
+for i in range(N):
+    threading.Thread(target=filosofo, args=(i,), daemon=True).start()
+
+time.sleep(10)  # Executa por 10 segundos antes de encerrar o programa
+
+
+b) Com Semáforo:
+- Usa-se um semáforo para limitar o número de filósofos que tentam comer ao mesmo tempo.
+- Ex: sem = threading.Semaphore(4) permite até 4 tentarem comer, evitando o deadlock.
+
+#%%
+import threading  # Importa a biblioteca para trabalhar com threads
+import time       # Para adicionar pausas (sleep)
+import random     # Para gerar tempos aleatórios
+
+N = 5  # Número de filósofos (e garfos)
+
+# Cria uma lista de semáforos, um para cada garfo
+semaforos = [threading.Semaphore(1) for _ in range(N)]
+
+# Função que representa o comportamento de cada filósofo
+def filosofo(i):
+    while True:
+        print(f"Filósofo {i} está pensando...")  # Estado: pensando
+        time.sleep(random.uniform(0.5, 1.5))    # Espera um tempo aleatório
+        print(f"Filósofo {i} está com fome.")   # Estado: com fome
+        semaforos[i].acquire()                 # Pega o garfo à esquerda
+        semaforos[(i + 1) % N].acquire()       # Pega o garfo à direita (com wrap-around)
+        print(f"Filósofo {i} está comendo.")    # Estado: comendo
+        time.sleep(random.uniform(0.5, 1.5))    # Come por um tempo aleatório
+        print(f"Filósofo {i} terminou de comer.")  # Termina de comer
+        semaforos[i].release()                 # Solta o garfo à esquerda
+        semaforos[(i + 1) % N].release()       # Solta o garfo à direita
+
+# Cria e inicia uma thread para cada filósofo
+for i in range(N):
+    threading.Thread(target=filosofo, args=(i,), daemon=True).start()
+
+time.sleep(10)  # Executa o programa por 10 segundos antes de encerrar
+
+
+5. GERENCIAMENTO DE MEMÓRIA
+- Algoritmos para alocar espaço na memória:
+
+a) First Fit:
+- Encontra a primeira partição livre que seja grande o suficiente.
+- Rápido, mas pode causar fragmentação externa.
+
+b) Best Fit:
+- Escolhe a menor partição livre que seja suficiente.
+- Minimiza o espaço desperdiçado, mas pode deixar muitos blocos pequenos e inutilizáveis.
+
+c) Worst Fit:
+- Escolhe a maior partição livre.
+- Deixa espaços grandes restantes, mas pode desperdiçar memória.
+
+First fit: é mais rápido, uma vez que encerra a busca por memória disponível assim que encontra espaço suficiente para o processo. Porém, por esse mesmo motivo (encaixar no primeiro espaço disponível), pode levar mais tempo para executar vários processos, uma vez que, ao alocar um bloco de memória, possivelmente haverá desperdício de memória, restando vários fragmentos menores de memória inutilizada. Com isso, eventualmente, pode não haver espaço para alocar alguns processos, precisando de métodos para contornar essa situação. É bom para casos onde o tempo é um fator crucial na execução nos processos.
+
+Best fit: é mais lento que o first fit, porque passa por todos os blocos disponíveis para verificar qual bloco que, ao ser alocado, terá o menor desperdício. Por esse motivo, a chance de algum processo não ser alocado é menor. Porém, por conseguir alocar todos mais facilmente, as unidades de memória disponíveis são menores. Caso a quantidade de memória disponível/reservada seja importante para o programa/sistema, o best fit pode não ser a melhor escolha.
+
+Worst fit: tenta alocar o processo no maior bloco de memória disponível, ou seja, aquele que deixará o maior espaço livre restante após a alocação. A ideia por trás dessa estratégia é evitar a fragmentação externa, já que grandes blocos restantes podem ser mais úteis futuramente do que pequenos fragmentos. No entanto, o worst fit tende a gerar muita fragmentação interna, pois frequentemente grandes blocos são subdivididos mesmo quando processos pequenos são alocados. Além disso, é o mais demorado dos três métodos, pois precisa analisar todos os blocos para encontrar o maior. Pode ser útil em situações em que se deseja preservar blocos médios ou pequenos para processos futuros de menor porte, mas, na prática, raramente oferece desempenho superior ao first fit ou best fit.
+
+
+- Fragmentação externa: espaços livres pequenos espalhados pela memória que não podem ser usados.
+
+import copy  # Importa o módulo copy para fazer cópias independentes de listas
+
+# Função que implementa o algoritmo First Fit
+def first_fit(memory_blocks, processes):
+    allocation = [-1] * len(processes)  # Lista para armazenar em qual bloco cada processo foi alocado (-1 = não alocado)
+    waste = [0] * len(processes)        # Lista para registrar o desperdício (fragmentação interna) por processo
+
+    for i, process in enumerate(processes):  # Para cada processo
+        for j, block in enumerate(memory_blocks):  # Para cada bloco de memória
+            if block >= process:  # Verifica se o bloco é suficientemente grande para o processo
+                allocation[i] = j  # Registra a alocação do processo no bloco j
+                waste[i] = memory_blocks[j] - process  # Calcula a fragmentação interna (espaço sobrando)
+                memory_blocks[j] -= process  # Atualiza o bloco, subtraindo o tamanho do processo
+                break  # Para após encontrar o primeiro bloco adequado (por isso é "First Fit")
+    return allocation, waste  # Retorna a lista de alocações e os desperdícios
+
+
+# Função que implementa o algoritmo Best Fit
+def best_fit(memory_blocks, processes):
+    allocation = [-1] * len(processes)
+    waste = [0] * len(processes)
+
+    for i, process in enumerate(processes):
+        best_idx = -1  # Índice do menor bloco suficiente (ainda não definido)
+        for j, block in enumerate(memory_blocks):
+            if block >= process:  # Se o bloco é suficiente
+                if best_idx == -1 or memory_blocks[j] < memory_blocks[best_idx]:
+                    best_idx = j  # Atualiza o melhor índice se for o menor até agora
+        if best_idx != -1:
+            allocation[i] = best_idx
+            waste[i] = memory_blocks[best_idx] - process
+            memory_blocks[best_idx] -= process
+    return allocation, waste
+
+
+# Função que implementa o algoritmo Worst Fit
+def worst_fit(memory_blocks, processes):
+    allocation = [-1] * len(processes)
+    waste = [0] * len(processes)
+
+    for i, process in enumerate(processes):
+        worst_idx = -1  # Índice do maior bloco suficiente
+        for j, block in enumerate(memory_blocks):
+            if block >= process:
+                if worst_idx == -1 or memory_blocks[j] > memory_blocks[worst_idx]:
+                    worst_idx = j  # Atualiza o índice se este bloco for maior
+        if worst_idx != -1:
+            allocation[i] = worst_idx
+            waste[i] = memory_blocks[worst_idx] - process
+            memory_blocks[worst_idx] -= process
+    return allocation, waste
+
+
+# Função que imprime os resultados com explicação detalhada
+def print_allocation(processes, allocation, waste, memory_blocks_after, strategy_name, original_total_mem):
+    print(f"\n--- {strategy_name} ---")  # Nome do algoritmo
+    total_waste = 0  # Inicializa o total de desperdício
+    print("\nVisualização de Alocação:\n")
+
+    for i, alloc in enumerate(allocation):  # Para cada processo
+        if alloc != -1:
+            # Visualização textual: blocos verdes (processo) e cinzas (desperdício)
+            print(f"Processo {i} ({processes[i]}) → Bloco {alloc} | " +
+                  f"{'█' * (processes[i] // 10)} ({processes[i]}) + " +
+                  f"{'.' * (waste[i] // 10)} ({waste[i]} desperdício)")
+            total_waste += waste[i]  # Soma o desperdício individual ao total
+        else:
+            print(f"Processo {i} ({processes[i]}) → Não alocado")  # Caso não tenha sido alocado
+
+    # Soma os tamanhos dos processos alocados (ignora os que ficaram de fora)
+    used_mem = sum(processes[i] for i in range(len(processes)) if allocation[i] != -1)
+
+    # Memória economizada = total original - usada - desperdício
+    unused_mem = original_total_mem - used_mem - total_waste
+
+    # Impressões explicativas das contas
+    print(f"\n🔍 Total de desperdício (fragmentação interna): {total_waste} unidades (soma de {waste})")
+    print(f"📦 Memória usada pelos processos: {used_mem} unidades (soma dos processos alocados)")
+    print("\n💡 Memória economizada (memória totalmente livre):")
+    print(f"   = Memória total disponível - Memória usada - Desperdício")
+    print(f"   = {original_total_mem} - {used_mem} - {total_waste}")
+    print(f"   = {unused_mem} unidades livres\n")
+
+
+# Função principal que prepara os dados e executa os algoritmos
+def main():
+    print("🧠 Simulador de Gerenciamento de Memória\n")
+
+    # Lista com blocos de memória disponíveis no sistema
+    memory_blocks = [130, 130, 130, 130, 130]
+
+    # Lista com os tamanhos dos processos que precisam de alocação
+    processes = [120, 125, 124, 110, 119]
+
+    # Calcula a memória total original (antes de qualquer alocação)
+    original_total_mem = sum(memory_blocks)
+
+    # Exibe os dados iniciais
+    print("📊 Blocos de Memória:", memory_blocks)
+    print("⚙️ Tamanhos dos Processos:", processes)
+
+    # --- FIRST FIT ---
+    mem_copy_ff = copy.deepcopy(memory_blocks)  # Cópia para não modificar o original
+    ff_alloc, ff_waste = first_fit(mem_copy_ff, processes)
+    print_allocation(processes, ff_alloc, ff_waste, mem_copy_ff, "First Fit", original_total_mem)
+
+    # --- BEST FIT ---
+    mem_copy_bf = copy.deepcopy(memory_blocks)
+    bf_alloc, bf_waste = best_fit(mem_copy_bf, processes)
+    print_allocation(processes, bf_alloc, bf_waste, mem_copy_bf, "Best Fit", original_total_mem)
+
+    # --- WORST FIT ---
+    mem_copy_wf = copy.deepcopy(memory_blocks)
+    wf_alloc, wf_waste = worst_fit(mem_copy_wf, processes)
+    print_allocation(processes, wf_alloc, wf_waste, mem_copy_wf, "Worst Fit", original_total_mem)
+
+
+# Execução do programa
+if __name__ == "__main__":
+    main()
+
+
+🟢 Cenário 1 – Básico e simétrico
+Para treinar o funcionamento dos algoritmos com resultados previsíveis.
+
+* Blocos de memória: [100, 500, 200, 300, 600]
+* Processos: [212, 417, 112, 426]
+
+✅ Objetivo didático:
+* Comparar como cada algoritmo aloca os mesmos processos.
+* Mostrar que First Fit nem sempre é o mais eficiente.
+
+First fit: é mais rápido, uma vez que encerra a busca por memória disponível assim que encontra espaço suficiente para o processo. Porém, por esse mesmo motivo (encaixar no primeiro espaço disponível), pode levar mais tempo para executar vários processos, uma vez que, ao alocar um bloco de memória, possivelmente haverá desperdício de memória, restando vários fragmentos menores de memória inutilizada. Com isso, eventualmente, pode não haver espaço para alocar alguns processos, precisando de métodos para contornar essa situação. É bom para casos onde o tempo é um fator crucial na execução nos processos.
+
+Best fit: é mais lento que o first fit, porque passa por todos os blocos disponíveis para verificar qual bloco que, ao ser alocado, terá o menor desperdício. Por esse motivo, a chance de algum processo não ser alocado é menor. Porém, por conseguir alocar todos mais facilmente, as unidades de memória disponíveis são menores. Caso a quantidade de memória disponível/reservada seja importante para o programa/sistema, o best fit pode não ser a melhor escolha.
+
+Worst fit: busca pelo bloco de memória que, ao ser alocado, resultará num maior desperdício (mais unidades de memória livres). Consequentemente, o desperdício de memória é maior. No final, a memória fica fragmentada em blocos menores que os iniciais e pode ficar mais difícil de encaixar alguns processos que sejam mais custosos (tanto que um processo não foi alocado). Por outro lado, a quantidade de memória usada é menor. Logo, no final, haverá uma quantidade razoável de memória livre (ainda que menor que ao usar o first fit).
+
+🟡 Cenário 2 – Blocos maiores que processos
+Baixa fragmentação, mas múltiplas escolhas possíveis.
+
+* Blocos de memória: [700, 600, 500, 400, 300]
+* Processos: [120, 200, 230, 300, 250]
+
+✅ Objetivo didático:
+* Ver que Best Fit usa melhor os blocos.
+* Worst Fit pode deixar muitos blocos inutilizáveis.
+
+First fit: todos os processos foram alocados, porém o desperdício foi grande e não sobraram unidades de memória (do contrário, o desperdício foi maior que a quantidade de memória usada).
+
+Best fit: o desperdício foi pequeno, logo sobraram muitas unidade de memória.
+
+Worst fit: também houve um gasto enorme de memória. O desperdício foi maior que o uso de memória.
+
+🟠 Cenário 3 – Fragmentação causada pela ordem dos blocos
+Todos os processos cabem, mas a ordem muda tudo.
+
+* Blocos de memória: [300, 200, 100, 400, 500]
+* Processos: [100, 300, 400]
+
+✅ Objetivo didático:
+* Mudar a ordem dos blocos e comparar os resultados.
+* Analisar o impacto da ordem em First Fit.
+
+First fit: o desperdício foi relativamente grande, dada a quantidade de memória total usada e a quantidade de memória disponível. Ao colocar os blocos em ordem crescente, o desperdício foi menor. Mesmo assim, depende da ordem dos blocos.
+
+Best fit: não houve desperdício de memória, sobrou bastante unidades de memória.
+
+Worst fit: mesmo caso do first fit. Dependendo da ordem dos blocos, o desperdício pode ser maior. Em um único caso o desperdício foi 0.
+
+🔵 Cenário 4 – Processo grande só cabe em 1 bloco
+Mostra como fragmentação pode impedir grandes processos mesmo com bastante memória livre.
+
+* Blocos de memória: [150, 200, 300, 350, 400]
+* Processos: [80, 120, 90, 500]
+
+✅ Objetivo didático:
+* Observar qual algoritmo é mais propenso a deixar o processo de 500 sem espaço.
+* Introdução ao problema de fragmentação externa.
+
+First fit: o desperdício foi maior que o uso de memória, mas ainda assim a quantidade restante foi grande. Por isso, ao reordenar os blocos livres, é possível encaixar o processo de 500.
+
+Best fit: assim como o first fit, o desperdício foi maior que o uso de memória e a quantidade restante foi grande. Também é possível reordenar os blocos disponíveis para encaixar o processo de 500.
+
+Worst fit: o desperdício foi muito maior que a memória usada. Além disso, com a fragmentação da memória, as unidades livres não são suficientes para encaixar o processo de 500.
+
+🔴 Cenário 5 – Memória limitada, processos pequenos
+Sistema embarcado ou restrito.
+
+* Blocos de memória: [128, 64, 256, 128]
+* Processos: [64, 32, 128, 96, 256]
+
+✅ Objetivo didático:
+* Mostrar a dificuldade de alocar vários processos em blocos pequenos.
+* Comparar qual algoritmo consegue alocar mais.
+
+First fit: não conseguiu alocar todos os processos e não sobrou espaço para reordenar e alocar mais unidades de memória.
+
+Best fit: embora o desperdício tenha sido pequeno, toda a memória foi usada (três processos ocuparam todo o espaço de um bloco). Logo, sobraram -96 unidades livres.
+
+Worst fit: nem todos os processos foram alocados. Além disso, o desperdício foi muito grande em alguns blocos. No final, o desperdício foi maior que a memória usada e muito próxima da memória total disponível, o que resultou em muitas unidades livres negativas.
+
+⚫ Cenário 6 – Alta fragmentação esperada
+Forçar os algoritmos a desperdiçar memória.
+
+* Blocos de memória: [130, 130, 130, 130, 130]
+* Processos: [120, 125, 124, 110, 119]
+
+✅ Objetivo didático:
+* Observar que todos os algoritmos deixam pequenos fragmentos inutilizados.
+* Introdução ao conceito de desperdício cumulativo.
+
+Todos os algoritmos resultaram em 0 unidades disponíveis. Todos consumiram a mesma quantidade de memória e o desperdício foi o mesmo.
+
+Para cada cenário:
+
+* Testar os três algoritmos.
+* Medir:
+    * Quais processos foram alocados?
+    * Qual foi o total de memória usada?
+    * Qual foi o desperdício total (fragmentação interna)?
+    * Qual foi a memória totalmente livre ao final?
+* Concluir:
+    * Qual algoritmo foi mais eficiente e por quê?
+    * Qual desperdiçou mais memória?
+
+O Best Fit foi o mais eficiente porque, ao procurar o menor bloco possível que ainda caiba o processo, ele minimiza o desperdício e fragmentação, mesmo que seja mais lento na busca.
+
+O Worst Fit tende a deixar grandes pedaços de memória inutilizáveis, promovendo alta fragmentação externa e ineficiência, especialmente quando há muitos processos ou a memória é limitada.

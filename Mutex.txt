@@ -1,0 +1,8 @@
+- Variável compartilhada
+Recurso global que pode ser acessado e alterado por vários processos/threads. O valor atualizado pode ser visto por todos os processos/threads que têm acesso à variável.
+
+- Condição de corrida
+Os processos/threads com acesso à variável compartilhada podem competir por ela ao mesmo tempo, num intervalo chamado de janela crítica. Porém, sem um controle específico para o acesso à variável, que bloquearia o acesso e alteração simultâneos, é provável que os valores atualizados por cada processo/thread se desencontrem, o que resulta num erro de atualização da variável global. Exemplo: em uma situação em que um contador tenha que atingir o número 1000, pode acontecer de uma thread incrementar sobre um valor X e outra incrementar sobre um valor Y, levando a uma contagem dessincronizada e desatualizada.
+
+- Exclusão mútua
+Trava utilizada numa execução para garantir que uma certa tarefa seja executada do começo ao fim. Dessa forma, não haveria condição de corrida, uma vez que, no cenário do contador, por exemplo, o incremento da variável compartilhada não seria interrompido por um segundo processo/thread. Logo, ele atingiria o número 1000, como esperado.
