@@ -1,0 +1,33 @@
+SISTEMAS OPERACIONAIS 13/03/2025
+
+=================================
+ASSUNTOS:
+- Threads
+=================================
+
+* Quem escolhe o processo é o escalonador. Porém, ele não olha dentro do processo.
+* Quem escolhe o que acontece primeiro dentro do processo é o desenvolvedor.
+
+--> THREADS
+Uma thread é um fluxo de execução. Pode ser considerado também uma tarefa dentro do processo.
+Um processo multitarefa é um processo com vários caminhos de execução.
+
+O processo será responsável por definir se a tarefa será interrompida por algum motivo, como entrada de dados pelo usuário.
+
+a) Três processos, cada um com um thread.
+Se não há processadores suficientes, há concorrência. A ordem é definida pelo escalonador. Se houver vários processadores livres, compensa utilizar o modelo multitarefa.
+
+b) Um processo com três threads.
+A troca de tarefas é mais rápida pois estão todas dentro do mesmo processo.
+
+--> ATIVIDADE
+
+-> Compare os modelos de Processo e Threads
+Observando a execução dos modelos:
+
+- O modelo de Processo iniciou os processos de forma linear com um certo atraso entre as inicializações. Como nesse caso não foi implementada a multiprogramação de processos, eles terminaram na ordem em que iniciaram. O tempo de execução foi razoável, mas o consumo de memória foi alto, provavelmente por conta da criação de vários processos independentes, cada um ocupando um espaço separado na memória.
+
+- O modelo de Threads iniciou os threads praticamente ao mesmo tempo. A execução foi realizada como um único processo multitarefa. Os threads não finalizaram na ordem em que iniciaram; eles finalizaram em ordem "aleatória", de acordo com o tempo de execução de cada um, já que eles compartilham o mesmo espaço na memória. O tempo de execução foi um pouco mais curto que a execução dos múltiplos processos e o consumo de memória foi significativamente menor.
+
+Essa diferença se dá pois no modelo de Processo, cada processo é tratado como uma entidade única, logo utiliza as CPUs disponíveis, uma para cada processo. Quando não há CPUs suficientes para todos os processos, ocorre uma alternância dos processos; os demais processos ficam em modo de espera e quando uma CPU fica disponível, o próximo processo é executado.
+Já o modelo de Threads possui um único processo, logo ele passa somente uma vez pelo ciclo de vida e é necessário somente um processador para executá-lo. Por isso, o consumo de memória é menor, pois não há o uso de múltiplas CPUs e a alternância entre as execuções das tarefas é mais eficiente.

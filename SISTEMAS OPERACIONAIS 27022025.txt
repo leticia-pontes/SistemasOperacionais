@@ -1,0 +1,3 @@
+Por que a transição dos estados dos processos é importante?
+
+A transição é importante para que os recursos do processador não sejam desperdiçados, caso um processo fique preso dentro de uma execução. A transição permite a alternância entre processos e evita que um único processo monopolize ou bloqueie a execução do sistema.

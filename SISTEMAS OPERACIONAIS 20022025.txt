@@ -1,0 +1,8 @@
+SISTEMAS OPERACIONAIS 20/02/2025
+
+=====================================
+- Critérios para seleção de processos
+- 
+=====================================
+
+Escalonador faz a escolha de qual processo escolher
